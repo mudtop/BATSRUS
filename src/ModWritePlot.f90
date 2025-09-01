@@ -69,8 +69,6 @@ contains
 
     ! Plot variables
     real:: PlotVar_GV(MinI:MaxI,MinJ:MaxJ,MinK:MaxK,MaxPlotvar)
-    real, allocatable:: PlotVar_GVI(:,:,:,:,:)
-    !$acc declare create(PlotVar_GVI)
     real:: PlotVarTec_GV(MinI:MaxI,MinJ:MaxJ,MinK:MaxK,MaxPlotvar)
     real:: PlotVarBody_V(MaxPlotvar)
     logical:: UsePlotVarBody_V(MaxPlotvar)
@@ -146,13 +144,6 @@ contains
 
     ! Determine if output file is formatted or unformatted
     IsBinary = DoSaveBinary .and. TypePlotFormat_I(iFile)=='idl'
-
-    UseMpiIO = DoSaveOneIdlFile
-
-    if(UseMpiIO) then
-       allocate(nCell_P(0:nProc-1))
-       allocate(nOffset_P(0:nProc-1))
-    end if
 
     PlotVarBody_V = 0.0
     UsePlotVarBody_V = .false.
@@ -289,6 +280,14 @@ contains
        iUnit = UnitTmp_
     end if
 
+    ! Should we use MPI-IO?
+    UseMpiIO = DoSaveOneIdlFile .and. .not.DoPlotShell .and. .not.DoPlotBox &
+         .and. .not.DoPlotShock .and. (TypePlotFormat_I(iFile) == 'idl')
+    if(UseMpiIO) then
+       allocate(nCell_P(0:nProc-1))
+       allocate(nOffset_P(0:nProc-1))
+    end if
+
     ! Calculate the record length for direct access data files
     ! The output format for data is ES14.6, so each cell has
     ! (nDim + nPlotVar)*14 data, plus a new line character
@@ -381,9 +380,7 @@ contains
     end if
 
     IsNonCartesianPlot = .not.IsCartesianGrid
-
-    if (DoPlotShell) IsNonCartesianPlot = .true.
-    if (DoPlotShock) IsNonCartesianPlot = .true.
+    if (DoPlotShell .or. DoPlotShock) IsNonCartesianPlot = .true.
     if (DoPlotBox) IsNonCartesianPlot = .false.
 
     ! Logical for hdf plots
@@ -456,6 +453,9 @@ contains
           call set_plotvar(iBlock, iFile - plot_, nPlotVar, NamePlotVar_V, &
                PlotVar_GV, PlotVarBody_V, UsePlotVarBody_V)
 
+          ! Restore State_VGB
+          if(SignB_ > 1 .and. DoThinCurrentSheet) call reverse_field(iBlock)
+
           if(IsDimensionalPlot_I(iFile)) call dimensionalize_plotvar(iBlock, &
                iFile-plot_,nPlotVar,NamePlotVar_V,PlotVar_GV,PlotVarBody_V)
 
@@ -476,16 +476,13 @@ contains
 
        do iBlock = 1, nBlock
           if(Unused_B(iBlock))CYCLE
-          if(.not.DoPlotShell .and. .not.DoPlotBox .and. &
-               .not.DoPlotShock .and. TypePlotFormat_I(iFile) == 'idl') then
-             ! Count the number of cells for output in this block.
-             call write_plot_idl(iUnit, iFile, iBlock, nPlotVar, PlotVar_GV, &
-                  DoSaveGenCoord, CoordUnit, Coord1Min, Coord1Max, &
-                  Coord2Min, Coord2Max, Coord3Min, Coord3Max, &
-                  CellSize1, CellSize2, CellSize3, nCellBlock, nOffset, &
-                  UseMpiIOIn=UseMpiIO, DoCountOnlyIn=.true.)
-             nCellProc = nCellProc + nCellBlock
-          end if
+          ! Count the number of cells for output in this block.
+          call write_plot_idl(iUnit, iFile, iBlock, nPlotVar, PlotVar_GV, &
+               DoSaveGenCoord, CoordUnit, Coord1Min, Coord1Max, &
+               Coord2Min, Coord2Max, Coord3Min, Coord3Max, &
+               CellSize1, CellSize2, CellSize3, nCellBlock, nOffset, &
+               UseMpiIOIn=UseMpiIO, DoCountOnlyIn=.true.)
+          nCellProc = nCellProc + nCellBlock
        end do
 
        ! Gather the number of cells per processor
@@ -514,31 +511,17 @@ contains
 
     nCellProc = 0
 
+    ! Probably DoPlotBox should be here next to DoPlotShell
     if(DoPlotShell) then
-       allocate(PlotVar_GVI(MinI:MaxI,MinJ:MaxJ,MinK:MaxK,MaxPlotvar, nGang))
-
        !$acc update device(PlotVar_VGB)
        !$acc parallel loop gang
        do iBlock = 1, nBlock
           if(Unused_B(iBlock))CYCLE
-          iGang = i_gang(iBlock)
-
-          ! Copy precalculated plot variables including ghost cells
-          do iVar = 1, nPlotVar
-             !$acc loop vector collapse(3)
-             do k = MinK, MaxK; do j = MinJ, MaxJ; do i = MinI, MaxI
-                PlotVar_GVI(i,j,k,iVar,iGang) = PlotVar_VGB(iVar,i,j,k,iBlock)
-             end do; end do; end do
-          end do
-
-          call set_plot_shell(iBlock, nPlotVar, PlotVar_GVI(:,:,:,:,iGang))
-
-          if(SignB_ > 1 .and. DoThinCurrentSheet) call reverse_field(iBlock)
+          call set_plot_shell(iBlock, nPlotVar, PlotVar_VGB(:,:,:,:,iBlock))
        end do
-
        !$acc update host(PlotVar_VIII)
-
-       deallocate(PlotVar_GVI)
+    elseif(DoPlotShock) then
+       call set_plot_shock(nPlotVar, PlotVar_VGB)
     else
        do iBlock = 1, nBlock
           if(Unused_B(iBlock))CYCLE
@@ -556,15 +539,16 @@ contains
              call set_plotvar(iBlock, iFile-plot_, nPlotVar, NamePlotVar_V, &
                   PlotVar_GV, PlotVarBody_V, UsePlotVarBody_V)
 
+             ! Restore State_VGB
+             if(SignB_ > 1 .and. DoThinCurrentSheet) call reverse_field(iBlock)
+
              ! Dimensionalize plot variables
              if(IsDimensionalPlot_I(iFile)) &
                   call dimensionalize_plotvar(iBlock, iFile-plot_, nPlotVar, &
                   NamePlotVar_V, PlotVar_GV, PlotVarBody_V)
           end if
 
-          if(DoPlotShock) then
-             call set_plot_shock(iBlock, nPlotVar, PlotVar_GV)
-          else if (DoPlotBox) then
+          if (DoPlotBox) then
              call set_plot_box(iBlock, nPlotVar, PlotVar_GV)
           else
              select case(TypePlotFormat_I(iFile))
@@ -602,8 +586,6 @@ contains
              CellSizeMin_D(2) = min(CellSizeMin_D(2), CellSize2)
              CellSizeMin_D(3) = min(CellSizeMin_D(3), CellSize3)
           end if
-
-          if(SignB_ > 1 .and. DoThinCurrentSheet) call reverse_field(iBlock)
 
        end do ! Block loop stage i2
     end if
