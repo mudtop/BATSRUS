@@ -136,10 +136,11 @@ module ModPhysics
 
   ! General Body parameters
   character(len=2):: NamePlanetRadius = 'R ' ! can be 'km' if there is no body
-  real:: rPlanetSi=0.0, rBody=0.0, rCurrents=0.0
+  real:: rPlanetSi = 0.0, rBody = 0.0, rCurrents = 0.0
   !$acc declare create(rBody)
-  real:: gBody=0.0
-  real:: RotPeriodSi=0.0, OmegaBody=0.0
+  real:: MassBodySi = 0.0
+  real:: gBody = 0.0
+  real:: RotPeriodSi = 0.0, OmegaBody = 0.0
   !$acc declare create(OmegaBody, gBody)
 
   ! The dimensional quantities are given for individual ion and neutral fluids
@@ -294,7 +295,7 @@ contains
   !============================================================================
   subroutine set_dipole
 
-    use ModMain,  ONLY: tSimulation
+    use ModMain, ONLY: tSimulation
     use CON_axes, ONLY: get_axes
 
     logical:: DoTest
@@ -324,14 +325,13 @@ contains
     ! set normalizations, physical constants, etc.
 
     use ModMain
-    use CON_planet,  ONLY: get_planet, NamePlanet
+    use CON_planet, ONLY: get_planet, NamePlanet
     use ModVarIndexes
     use ModMultiFluid
     use ModAdvance, ONLY: UseElectronPressure, Pe_, UseAnisoPressure, Ppar_,&
          UseEfield, UseAnisoPe
     use BATL_lib, ONLY: IsCartesian
 
-    real:: MassBodySi
     real:: pCoef
     real:: Charge_I(nIonFluid+1)
     integer:: i, iBoundary, iFluid, iIon, jIon
@@ -1315,8 +1315,8 @@ contains
 
     ! Update the angular velocity OmegaBody_D
 
-    use CON_axes,          ONLY: get_axes
-    use ModMain,           ONLY: tSimulation, TypeCoordSystem
+    use CON_axes, ONLY: get_axes
+    use ModMain, ONLY: tSimulation, TypeCoordSystem
 
     real:: RotAxis_D(3) ! Avoid race condition in OpenMP
 
@@ -1342,7 +1342,7 @@ contains
        DimFactor_V, DimFactorBody_V)
 
     use ModVarIndexes, ONLY: DefaultState_V
-    use ModUtilities,  ONLY: lower_case
+    use ModUtilities, ONLY: lower_case
     use ModMultiFluid, ONLY: extract_fluid_name
 
     integer, intent(in):: nPlotVar
@@ -1455,7 +1455,7 @@ contains
   subroutine set_second_body_coord
 
     use ModMain, ONLY:tSimulation, StartTime, TypeCoordSystem
-    use CON_axes,      ONLY: transform_matrix
+    use CON_axes, ONLY: transform_matrix
     use CON_planet, ONLY: orbit_in_hgi
     ! Second body location in HGI
     real:: XyzBody2Hgi_D(3), XyzBody2_D(3), vBody2Hgi_D(3)
