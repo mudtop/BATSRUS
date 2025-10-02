@@ -54,6 +54,7 @@ module ModIO
   logical :: DoSaveRestart = .true., &
        DoSavePlotsAmr = .false., DoSaveLogfile = .false., &
        DoSaveBinary = .true., DoSaveTecBinary = .false.
+  !$acc declare create(DoSaveTecBinary)
 
   ! Unit numbers for the log file
   integer :: iUnitLogfile = -1
@@ -180,7 +181,8 @@ module ModIO
   logical :: IsLogNameN = .true.
   logical :: IsLogNameE = .false.
 
-  logical :: DoSaveOneTecFileOrig = .false., DoSaveOneTecFile
+  logical :: DoSaveOneTecFileOrig = .true., DoSaveOneTecFile
+  !$acc declare create(DoSaveOneTecFile)
 
 #ifdef NOMPIIO
   logical :: DoSaveOneIdlFile = .false.
