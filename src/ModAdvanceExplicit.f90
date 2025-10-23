@@ -24,7 +24,7 @@ contains
          set_low_order_face
     use ModAdvance, ONLY: UseUpdateCheck, DoFixAxis, DoCalcElectricField, &
          UseAdaptiveLowOrder, UseMhdMomentumFlux, iTypeUpdate, UpdateFast_,  &
-         LeftState_VX, RightState_VX, nFaceValue
+         LeftState_VX, RightState_VX, nFaceValue, DtMax_CB
     use ModCoarseAxis, ONLY: UseCoarseAxis, coarsen_axis_cells
     use ModB0, ONLY: set_b0_face
     use ModParallel, ONLY: DiLevel_EB
@@ -164,6 +164,12 @@ contains
                         RightState_VX(:,1, 1:nJ, 1:nK),       &
                         LeftState_VX(:,1, 1:nJ, 1:nK),        &
                         DtIn = Dt*No2Si_V(UnitT_))
+                elseif(iStage > 1)then
+                   call advance_threaded_block_expl(iBlock, iStage, &
+                        RightState_VX(:, 1, 1:nJ, 1:nK),       &
+                        LeftState_VX(:, 1, 1:nJ, 1:nK) ,       &
+                        Dt_II = Cfl*DtMax_CB(1,1:nJ,1:nK,iBlock)*&
+                        No2Si_V(UnitT_))
                 else
                    call advance_threaded_block_expl(iBlock, iStage, &
                         RightState_VX(:, 1, 1:nJ, 1:nK),       &
