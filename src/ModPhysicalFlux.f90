@@ -105,7 +105,6 @@ contains
          iRho, iRhoUx, iRhoUy, iRhoUz, iUx, iUy, iUz, iEnergy, iP, &
          IsIon_I, nIonFluid, UseMultiIon, ElectronPerMass_I, select_fluid
     use ModGeometry, ONLY: r_GB
-    use ModPUI, ONLY: Pu3_
     use BATL_lib, ONLY: nDim, x_, y_, z_
 
     real, intent(in) :: State_V(nVar)      ! input primitive state
@@ -198,17 +197,18 @@ contains
     do iVar = ScalarFirst_, ScalarLast_
        Flux_V(iVar) = Un_I(1)*State_V(iVar)
     end do
-    if(PuiFirst_ > 1)then
-       ! PUI scalar advect with second fluid's velocity
-       do iVar = PuiFirst_, PuiLast_
-          Flux_V(iVar) = Un_I(Pu3_)*State_V(iVar)
-       end do
-    end if
     ! Overwrite Lperp_ for multi-ion
     if(Lperp_ > 1 .and. UseMultiIon) Flux_V(Lperp_) = HallUn*State_V(Lperp_)
-
     ! Overwrite levelHP flux for multi-ion
-    if(LevelHP_ > 1 .and. UseMultiIon) Flux_V(LevelHP_) = HallUn*State_V(LevelHP_)
+    if(LevelHP_ > 1 .and. UseMultiIon) &
+         Flux_V(LevelHP_) = HallUn*State_V(LevelHP_)
+
+    if(PuiFirst_ > 1)then
+       ! PUI scalar advect with first fluid's velocity
+       do iVar = PuiFirst_, PuiLast_
+          Flux_V(iVar) = Un_I(1)*State_V(iVar)
+       end do
+    end if
 
     ! Set flux for electron pressure
     if(UseElectronPressure)then

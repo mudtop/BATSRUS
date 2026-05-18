@@ -19,7 +19,7 @@ module ModIeCoupling
 
   public:: init_ie_grid                ! set the ionosphere grid
   public:: clean_mod_ie_coupling       ! deallocate arrays
-  public:: read_ie_velocity_param      ! parameters for velocity nudging
+  public:: read_ie_param               ! parameters for velocity nudging
   public:: get_ie_potential            ! interpolate potential to x,y,z
   public:: logvar_ionosphere           ! get cross polar cap potential
   public:: calc_grad_ie_potential      ! calculate gradient of iono. potential
@@ -63,6 +63,9 @@ module ModIeCoupling
   real, public:: dThetaIono, dPhiIono
   !$acc declare create(dThetaIono, dPhiIono)
   real, allocatable:: SinTheta_I(:), CosTheta_I(:), SinPhi_I(:), CosPhi_I(:)
+
+  ! Precipitation Coupling
+  logical, public :: UseIePrecip = .false.
 
   ! Velocity nudging
   logical :: UseIonoVelocity = .false.
@@ -653,7 +656,9 @@ contains
     !$acc loop vector gang collapse(3) &
     !$acc private(XyzIono_D, Coef0, dXyz_D, Coef, Cross_D)
     do j = 1, nPhiIono - 1; do i = 2, nThetaIono - 1
+#ifdef _OPENACC
        do iMag = 1, nMag
+#endif
 
           iLine = (j - 1)*(nThetaIono - 2) + i - 1
           ! distribute the work among the BATSRUS processors
@@ -664,6 +669,10 @@ contains
 
           ! 1/4pi times the area of a surface element
           Coef0 = 1/(4*cPi)*rIonosphere**2*dThetaIono*dPhiIono*SinTheta_I(i)
+
+#ifndef _OPENACC
+          do iMag = 1, nMag
+#endif
 
           ! CHECK
           ! Surface = Surface + Coef0
@@ -734,22 +743,32 @@ contains
     call test_stop(NameSub, DoTest)
   end subroutine calc_ie_mag_perturb
   !============================================================================
-  subroutine read_ie_velocity_param
+  subroutine read_ie_param(NameCommand)
 
     use ModReadParam, ONLY: read_var
 
+    character(len=*), intent(in):: NameCommand
+
     logical:: DoTest
-    character(len=*), parameter:: NameSub = 'read_ie_velocity_param'
+    character(len=*), parameter:: NameSub = 'read_ie_param'
     !--------------------------------------------------------------------------
     call test_start(NameSub, DoTest)
-    call read_var('UseIonoVelocity', UseIonoVelocity)
-    if(UseIonoVelocity)then
-       call read_var('rCoupleUiono'   , rCoupleUiono)
-       call read_var('TauCoupleUiono',  TauCoupleUiono)
-    end if
+
+    select case(NameCommand)
+    case("#IECOUPLING", "#IEVELOCITY")
+       call read_var('UseIonoVelocity', UseIonoVelocity)
+       if(UseIonoVelocity)then
+          call read_var('rCoupleUiono'   , rCoupleUiono)
+          call read_var('TauCoupleUiono',  TauCoupleUiono)
+       end if
+    case("#IEPRECIP", "#IEPRECIPITATION")
+       call read_var('UseIePrecip', UseIePrecip)
+    case default
+       call stop_mpi(NameSub//': unknown command='//NameCommand)
+    end select
 
     call test_stop(NameSub, DoTest)
-  end subroutine read_ie_velocity_param
+  end subroutine read_ie_param
   !============================================================================
   subroutine apply_ie_velocity
 

@@ -7,7 +7,7 @@ module ModWriteTecplot
   use BATL_lib, ONLY: &
        test_start, test_stop, lVerbose, iProc, nProc, iComm, &
        MinI, MaxI, MinJ, MaxJ, MinK, MaxK, nIjk_D, MaxBlock, &
-       nI, nJ, nK
+       nI, nJ, nK, Unused_B
   use ModBatsrusUtility, ONLY: get_date_time, get_time_string, stop_mpi
 
   use ModKind, ONLY: Int1_
@@ -160,7 +160,14 @@ contains
     end if
 
     nOffset = 0
-    if(present(nCellOffset)) nOffset = nCellOffset*nCharPerLine
+    if(present(nCellOffset)) then
+       ! Note: Since nCellOffset is int4 while nOffset is int8, the following
+       ! multiplication can be overflowed when nCellOffset is large.
+       ! nOffset = nCellOffset*nCharPerLine
+       ! To avoid the overflow, we do it in two steps:
+       nOffset = nCellOffset
+       nOffset = nOffset*nCharPerLine
+    end if
   end subroutine write_tecplot_init
   !============================================================================
   subroutine write_tecplot_count(nCell)
@@ -173,6 +180,7 @@ contains
 
     nCell = 0
     do iBlock = 1, nBlock
+       if(Unused_B(iBlock)) CYCLE
        do k = 1, nK; do j = 1, nJ; do i = 1, nI
           if(CellIndex_GB(i,j,k,iBlock) == 0) CYCLE
           nCell = nCell + 1
@@ -189,6 +197,7 @@ contains
     iMark_GI = 0
     iCount = 1
     do iBlock = iBlockMin, iBlockMax
+       if(Unused_B(iBlock)) CYCLE
        do k = 1, nK; do j = 1, nJ; do i = 1, nI
           if(CellIndex_GB(i,j,k,iBlock) == 0) CYCLE
           iMark_GI(i,j,k,iBlock-iBlockMin+1) = iCount
@@ -611,7 +620,12 @@ contains
        nOffset = 0
        if(nStage==2 .and. iStage==2) then
           ! Offset in the file for this processor
-          nOffset = nBrickStart*lRecConnect
+          ! Note: Since nBrickStart is int4 while nOffset is int8, using
+          ! nOffset = nBrickStart*lRecConnect can be overflowed when
+          ! nBrickStart is large.
+          ! To avoid the overflow, we do it in two steps:
+          nOffset = nBrickStart
+          nOffset = nOffset*lRecConnect
        end if
 
        nPass = 2
@@ -787,7 +801,7 @@ contains
     end do ! iStage
 
     if(DoSaveTecBinary) then
-       call close_file
+       call close_file(NameCaller=NameSub)
     else
        call MPI_file_close(iUnit, iError)
     end if
@@ -909,7 +923,8 @@ contains
        ! Actually only works for 3D right now.
        ! hyzhou: This is supposed to be cell-centered data, but why is the node
        ! number and element number different from expected?
-       call open_file(FILE=NameFile, access='stream', form='unformatted')
+       call open_file(FILE=NameFile, access='stream', form='unformatted', &
+            NameCaller=NameSub)
        if(DoCut)then
           write(UnitTmp_) 'TITLE="BATSRUS: cut Data, '//StringDateTime//'"',&
                CharNewLine
@@ -933,7 +948,7 @@ contains
                ', F=FEPOINT, ET=BRICK', CharNewLine
        end select
     else
-       call open_file(File=NameFile)
+       call open_file(File=NameFile, NameCaller=NameSub)
 
        if(DoCut)then
           write(UnitTmp_,'(a)')'TITLE="BATSRUS: cut Data, ' &
@@ -960,7 +975,7 @@ contains
     end if
 
     call write_tecplot_auxdata
-    call close_file
+    call close_file(NameCaller=NameSub)
 
     call test_stop(NameSub, DoTest)
   end subroutine write_tecplot_head
