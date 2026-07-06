@@ -198,7 +198,6 @@ contains
        if (Unused_B(iBlock)) CYCLE
 
        select case(TypeSetup)
-       !=====================================================================
        case('3layer')
           ! Three-layer symmetric slab (Athena-style)
           ! Shear interfaces at |y| = yShear, flow in x-direction
@@ -227,7 +226,6 @@ contains
              end if
           end do  ! iFluid
 
-       !=====================================================================
        case('2layer')
           ! Two-layer asymmetric setup (Venus-like ionosphere)
           ! Lower layer (y <= yShear): dense, slow, unmagnetized
