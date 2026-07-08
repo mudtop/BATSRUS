@@ -1332,10 +1332,10 @@ contains
                          end select
                       case('punch')
                          TypeSatPos_I(iFileInstrument) = 'earth'
-                         
+
                          nPixel_I(iFileInstrument)         = 300
                          MuLimbDarkening                   = 0.5
-                         
+
                          select case(trim(NameInstrument))
                          case('nfi')
                             rSizeImage_I(iFileInstrument)  = 32.0
