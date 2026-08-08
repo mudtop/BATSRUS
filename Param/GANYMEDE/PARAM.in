@@ -4,22 +4,24 @@ Param/GANYMEDE/PARAM.in: steady state ideal MHD G8 flyby		StringDescription
 MhdHypPe equation set
 face-based innerBC
 
-#PLANET
+#TEST
+init_axes set_axes		StringTest
+
+#MOON
 Ganymede		NamePlanet
 2634000			RadiusPlanet [m]
 1.4819E+23		MassPlanet   [kg]
-0.0			OmegaPlanet  [radian/s]
-0.0			TiltRotation [degree]
+0.0			OmegaPlanet  [rad/s]
 DIPOLE			TypeBField
-4.3764			MagAxisThetaGeo [degree]
-289.1550		MagAxisPhiGeo   [degree]
--718.8961E-9		DipoleStrength  [T]
+4.3764			MagAxisTheta [deg]
+289.1550		MagAxisPhi   [deg]
+-718.8961E-9		DipoleStrength [T]
 
 Alternative description
 DIPOLE
-175.63			MagAxisThetaGeo [degree]
-109.162			MagAxisPhiGeo   [degree]
-718.895E-9		DipoleStrength  [T]
+175.63			MagAxisTheta   [deg]
+109.162			MagAxisPhi     [deg]
+718.895E-9		DipoleStrength [T]
 
 #ROTATION
 F			UseRotation
@@ -191,7 +193,10 @@ T
 T			UseSemiImplicit
 resistivity		TypeSemiImplicit
 
-By default the semi-Krylov solver is used.
+#SEMIKRYLOV
+GMRES			TypeKrylov  (GMRES, BICGSTAB, CG)
+1e-8			ErrorMaxKrylov
+100			MaxMatvecKrylov
 
 #SAVEINITIAL
 F			DoSaveInitial

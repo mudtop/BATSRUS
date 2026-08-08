@@ -7,9 +7,11 @@ Param/MARS/PARAM.in.ta: time-accurate Mars test		StringDescription
 #PLANET
 Mars			NamePlanet
 
-#ROTATION
-T			UseRotation
-24.65523		RotationPeriod
+#TEST
+init_axes		StringTest
+
+#COORDSYSTEM
+GSE			TypeCoordSystem
 
 #UPDATEB0
 10.0			DtUpdateB0
@@ -27,6 +29,9 @@ F			UseFullImplicit
 spherical_genr		TypeGeometry
 Param/MARS/grid_stretch.dat		NameGridFile
 
+#GRIDBLOCKALL
+6000			MaxBlock
+
 #GRID
 10			nRootBlock1
 8			nRootBlock2
@@ -37,9 +42,6 @@ Param/MARS/grid_stretch.dat		NameGridFile
  16.			yMax
 -16.			zMin
  16.			zMax
-
-#GRIDBLOCKALL
-6000			MaxBlock
 
 #LIMITRADIUS
 1.0294464		rMin
@@ -130,18 +132,7 @@ T			UseHotO
 #MARSB0
 T			UseMarsB0
 60			NNm
--149.6			Rot
-21.65608		Thetilt
 Param/MARS/marsmgsp.txt		NameFileB0
-
-#MSO
-T			UseMso
-0.36905			RotAxisMsoX
-0.21215			RotAxisMsoY
-0.90487			RotAxisMsoZ
-
-#SMDIST
-1.6464906		SMDist
 
 #SOLARCONDITION
 solarmin		TypeSolarCond
@@ -150,7 +141,7 @@ solarmin		TypeSolarCond
 T			UseImpactIon
 T			UseChargeEx
 
-#USECHAPMAN
+#CHAPMAN
 T			UseChapman
 
 PHOTOIONIZATION
